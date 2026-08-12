@@ -1,12 +1,20 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { getSupabaseBrowser, STORAGE_BUCKET } from '@/lib/supabase-browser';
 
 interface EventInfo {
   id: string;
   name: string;
   event_date: string | null;
   upload_enabled: boolean;
+}
+
+interface InitUpload {
+  index: number;
+  path: string;
+  token: string;
+  mediaType: 'image' | 'video';
 }
 
 export default function GuestUpload({ eventId }: { eventId: string }) {
@@ -43,25 +51,65 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
     if (files.length === 0) return;
     setStatus('uploading');
     setErrorMsg('');
-    setProgressText(`Subiendo ${files.length} archivo${files.length > 1 ? 's' : ''}...`);
+    setProgressText('Preparando...');
 
     try {
-      const formData = new FormData();
-      formData.append('eventId', eventId);
-      formData.append('guestName', guestName);
-      files.forEach((f) => formData.append('files', f));
+      const initRes = await fetch('/api/upload/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventId,
+          files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
+        }),
+      });
+      const initData = await initRes.json();
+      if (!initRes.ok) throw new Error(initData.error || 'No se pudo iniciar la subida.');
 
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-      const data = await res.json();
+      const uploads: InitUpload[] = initData.uploads || [];
 
-      if (!res.ok) throw new Error(data.error || 'No se pudo subir.');
-
-      if (data.uploaded > 0) {
-        setStatus('success');
-      } else {
+      if (uploads.length === 0) {
         setStatus('error');
-        setErrorMsg(data.errors?.[0] || 'No se pudo subir ningún archivo.');
+        setErrorMsg(initData.errors?.[0] || 'No se pudo subir ningún archivo.');
+        return;
       }
+
+      const supabase = getSupabaseBrowser();
+      const completed: Array<{ path: string; mediaType: 'image' | 'video' }> = [];
+
+      for (let i = 0; i < uploads.length; i++) {
+        const u = uploads[i];
+        setProgressText(`Subiendo ${i + 1} de ${uploads.length}...`);
+        const file = files[u.index];
+
+        const { error } = await supabase.storage
+          .from(STORAGE_BUCKET)
+          .uploadToSignedUrl(u.path, u.token, file);
+
+        if (!error) {
+          completed.push({ path: u.path, mediaType: u.mediaType });
+        }
+      }
+
+      if (completed.length === 0) {
+        setStatus('error');
+        setErrorMsg(
+          'Tu conexión se interrumpió. Tus fotos siguen a salvo en tu teléfono — intenta de nuevo.'
+        );
+        return;
+      }
+
+      const completeRes = await fetch('/api/upload/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId, guestName, uploaded: completed }),
+      });
+
+      if (!completeRes.ok) {
+        const data = await completeRes.json().catch(() => ({}));
+        throw new Error(data.error || 'No se pudo registrar tu subida.');
+      }
+
+      setStatus('success');
     } catch (err: any) {
       setStatus('error');
       setErrorMsg(
