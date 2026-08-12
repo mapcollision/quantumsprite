@@ -70,3 +70,4 @@ Abre http://localhost:3000
 - No hay límite de almacenamiento configurado más allá del plan gratuito de
   Supabase (~1GB). Para eventos grandes, considera subir de plan.
 - Tamaño máximo por archivo: 25MB. Máximo 20 archivos por subida.
+- 
