@@ -15,13 +15,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'PartySnap — Comparte las fotos de tu evento',
-  description: 'Un código QR. Cientos de recuerdos. Una galería hermosa.',
+  title: 'PartySnap — Share Your Event Photos',
+  description: 'One QR code. Hundreds of memories. One beautiful gallery.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${playfair.variable} ${inter.variable}`}>
+    <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <body>{children}</body>
     </html>
   );

@@ -8,6 +8,7 @@ interface EventInfo {
   name: string;
   event_date: string | null;
   upload_enabled: boolean;
+  expired: boolean;
 }
 
 interface InitUpload {
@@ -51,7 +52,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
     if (files.length === 0) return;
     setStatus('uploading');
     setErrorMsg('');
-    setProgressText('Preparando...');
+    setProgressText('Preparing...');
 
     try {
       const initRes = await fetch('/api/upload/init', {
@@ -63,13 +64,13 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
         }),
       });
       const initData = await initRes.json();
-      if (!initRes.ok) throw new Error(initData.error || 'No se pudo iniciar la subida.');
+      if (!initRes.ok) throw new Error(initData.error || 'Could not start the upload.');
 
       const uploads: InitUpload[] = initData.uploads || [];
 
       if (uploads.length === 0) {
         setStatus('error');
-        setErrorMsg(initData.errors?.[0] || 'No se pudo subir ningún archivo.');
+        setErrorMsg(initData.errors?.[0] || 'Could not upload any files.');
         return;
       }
 
@@ -78,7 +79,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
 
       for (let i = 0; i < uploads.length; i++) {
         const u = uploads[i];
-        setProgressText(`Subiendo ${i + 1} de ${uploads.length}...`);
+        setProgressText(`Uploading ${i + 1} of ${uploads.length}...`);
         const file = files[u.index];
 
         const { error } = await supabase.storage
@@ -93,7 +94,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
       if (completed.length === 0) {
         setStatus('error');
         setErrorMsg(
-          'Tu conexión se interrumpió. Tus fotos siguen a salvo en tu teléfono — intenta de nuevo.'
+          'Your connection dropped. Your photos are still safe on your phone — try again.'
         );
         return;
       }
@@ -106,7 +107,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
 
       if (!completeRes.ok) {
         const data = await completeRes.json().catch(() => ({}));
-        throw new Error(data.error || 'No se pudo registrar tu subida.');
+        throw new Error(data.error || 'Could not register your upload.');
       }
 
       setStatus('success');
@@ -114,7 +115,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
       setStatus('error');
       setErrorMsg(
         err.message ||
-          'Tu conexión se interrumpió. Tus fotos siguen a salvo en tu teléfono — intenta de nuevo.'
+          'Your connection dropped. Your photos are still safe on your phone — try again.'
       );
     }
   }
@@ -123,7 +124,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
     return (
       <Centered>
         <p className="text-lg font-medium text-ink">
-          Este evento no existe o el enlace es incorrecto.
+          This event doesn&apos;t exist, or the link is incorrect.
         </p>
       </Centered>
     );
@@ -132,7 +133,20 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
   if (!event) {
     return (
       <Centered>
-        <p className="text-ink/50">Cargando...</p>
+        <p className="text-ink/50">Loading...</p>
+      </Centered>
+    );
+  }
+
+  if (event.expired) {
+    return (
+      <Centered>
+        <div className="mb-4 text-4xl">⏳</div>
+        <h1 className="font-display text-2xl font-bold text-ink">{event.name}</h1>
+        <p className="mt-3 text-ink/60">
+          This event has expired — photos are only available for 48 hours after the event was
+          created. Thanks for stopping by!
+        </p>
       </Centered>
     );
   }
@@ -142,7 +156,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
       <Centered>
         <h1 className="font-display text-2xl font-bold text-ink">{event.name}</h1>
         <p className="mt-3 text-ink/60">
-          Este evento ya no está aceptando fotos nuevas. ¡Gracias por tu interés!
+          This event is no longer accepting new photos. Thanks for your interest!
         </p>
       </Centered>
     );
@@ -152,8 +166,8 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
     return (
       <Centered>
         <div className="mb-4 text-5xl">❤️</div>
-        <h1 className="font-display text-2xl font-bold text-ink">¡Gracias!</h1>
-        <p className="mt-3 text-ink/60">Tus recuerdos ya son parte de la celebración.</p>
+        <h1 className="font-display text-2xl font-bold text-ink">Thank you!</h1>
+        <p className="mt-3 text-ink/60">Your memories are now part of the celebration.</p>
         <button
           onClick={() => {
             setFiles([]);
@@ -162,7 +176,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
           }}
           className="mt-6 rounded-xl bg-accent px-6 py-3 font-semibold text-white"
         >
-          Subir más fotos
+          Upload more photos
         </button>
       </Centered>
     );
@@ -173,7 +187,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
       <div className="mx-auto max-w-md">
         <h1 className="text-center font-display text-2xl font-bold text-ink">{event.name}</h1>
         <p className="mt-1 text-center text-sm text-ink/50">
-          Comparte tus fotos de la celebración
+          Share your photos from the celebration
         </p>
 
         <input
@@ -192,8 +206,8 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
             className="mt-8 flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-accent/30 bg-white py-14 text-center transition active:scale-[0.99]"
           >
             <span className="text-4xl">📸</span>
-            <span className="mt-3 font-semibold text-ink">Agregar tus fotos</span>
-            <span className="mt-1 text-sm text-ink/40">Toca para elegir de tu galería</span>
+            <span className="mt-3 font-semibold text-ink">Add your photos</span>
+            <span className="mt-1 text-sm text-ink/40">Tap to choose from your gallery</span>
           </label>
         ) : (
           <>
@@ -213,7 +227,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
                   <button
                     onClick={() => removeFile(i)}
                     className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs text-white"
-                    aria-label="Quitar"
+                    aria-label="Remove"
                   >
                     ✕
                   </button>
@@ -230,7 +244,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
             <input
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
-              placeholder="Tu nombre (opcional)"
+              placeholder="Your name (optional)"
               maxLength={60}
               className="mt-6 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
@@ -242,7 +256,7 @@ export default function GuestUpload({ eventId }: { eventId: string }) {
               disabled={status === 'uploading'}
               className="mt-4 w-full rounded-xl bg-accent px-6 py-3.5 font-semibold text-white shadow-lg shadow-accent/30 disabled:opacity-60"
             >
-              {status === 'uploading' ? progressText : `Subir recuerdos ❤️ (${files.length})`}
+              {status === 'uploading' ? progressText : `Upload memories ❤️ (${files.length})`}
             </button>
           </>
         )}

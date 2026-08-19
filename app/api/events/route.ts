@@ -8,10 +8,10 @@ export async function POST(req: NextRequest) {
     const eventDate = body?.eventDate || null;
 
     if (!name) {
-      return NextResponse.json({ error: 'El nombre del evento es requerido.' }, { status: 400 });
+      return NextResponse.json({ error: 'Event name is required.' }, { status: 400 });
     }
     if (name.length > 120) {
-      return NextResponse.json({ error: 'El nombre del evento es demasiado largo.' }, { status: 400 });
+      return NextResponse.json({ error: 'Event name is too long.' }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('Error creating event:', err);
     return NextResponse.json(
-      { error: 'No se pudo crear el evento. Intenta de nuevo.' },
+      { error: 'Could not create the event. Please try again.' },
       { status: 500 }
     );
   }

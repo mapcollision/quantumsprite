@@ -29,14 +29,14 @@ export async function POST(req: NextRequest) {
     const files: IncomingFile[] = Array.isArray(body?.files) ? body.files : [];
 
     if (!eventId || typeof eventId !== 'string') {
-      return NextResponse.json({ error: 'Falta el identificador del evento.' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing event ID.' }, { status: 400 });
     }
     if (files.length === 0) {
-      return NextResponse.json({ error: 'No se seleccionaron archivos.' }, { status: 400 });
+      return NextResponse.json({ error: 'No files were selected.' }, { status: 400 });
     }
     if (files.length > MAX_FILES) {
       return NextResponse.json(
-        { error: `Solo puedes subir hasta ${MAX_FILES} archivos a la vez.` },
+        { error: `You can upload up to ${MAX_FILES} files at a time.` },
         { status: 400 }
       );
     }
@@ -45,16 +45,22 @@ export async function POST(req: NextRequest) {
 
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .select('id, upload_enabled')
+      .select('id, upload_enabled, expired')
       .eq('id', eventId)
       .single();
 
     if (eventError || !event) {
-      return NextResponse.json({ error: 'Este evento no existe.' }, { status: 404 });
+      return NextResponse.json({ error: 'This event does not exist.' }, { status: 404 });
+    }
+    if (event.expired) {
+      return NextResponse.json(
+        { error: 'This event has expired and no longer accepts new photos.' },
+        { status: 403 }
+      );
     }
     if (!event.upload_enabled) {
       return NextResponse.json(
-        { error: 'Este evento ya no está aceptando fotos nuevas.' },
+        { error: 'This event is no longer accepting new photos.' },
         { status: 403 }
       );
     }
@@ -72,11 +78,11 @@ export async function POST(req: NextRequest) {
       const mediaType = ALLOWED_TYPES[file.type];
 
       if (!mediaType) {
-        errors.push(`${file.name}: tipo de archivo no permitido.`);
+        errors.push(`${file.name}: file type not allowed.`);
         continue;
       }
       if (file.size > MAX_FILE_SIZE) {
-        errors.push(`${file.name}: el archivo es demasiado grande (máx. 25MB).`);
+        errors.push(`${file.name}: file is too large (max 25MB).`);
         continue;
       }
 
@@ -89,7 +95,7 @@ export async function POST(req: NextRequest) {
 
       if (error || !data) {
         console.error('Error creating signed upload URL:', error);
-        errors.push(`${file.name}: no se pudo preparar la subida.`);
+        errors.push(`${file.name}: could not prepare upload.`);
         continue;
       }
 
@@ -99,6 +105,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ uploads, errors });
   } catch (err) {
     console.error('Error in upload/init route:', err);
-    return NextResponse.json({ error: 'Algo salió mal. Intenta de nuevo.' }, { status: 500 });
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }

@@ -15,7 +15,7 @@ export default function CreateEventForm() {
     setError('');
 
     if (!name.trim()) {
-      setError('Escribe el nombre de tu evento.');
+      setError('Please enter your event name.');
       return;
     }
 
@@ -27,10 +27,10 @@ export default function CreateEventForm() {
         body: JSON.stringify({ name: name.trim(), eventDate: eventDate || null }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Algo salió mal.');
+      if (!res.ok) throw new Error(data.error || 'Something went wrong.');
       router.push(`/admin/${data.adminToken}`);
     } catch (err: any) {
-      setError(err.message || 'No se pudo crear el evento. Intenta de nuevo.');
+      setError(err.message || 'Could not create the event. Please try again.');
       setLoading(false);
     }
   }
@@ -41,18 +41,18 @@ export default function CreateEventForm() {
       className="w-full max-w-md space-y-4 rounded-3xl border border-rose-900/5 bg-white/80 p-6 shadow-xl shadow-rose-900/5 backdrop-blur sm:p-8"
     >
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-ink/70">Nombre del evento</label>
+        <label className="mb-1.5 block text-sm font-medium text-ink/70">Event name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Boda de Sarah & John"
+          placeholder="Sarah & John's Wedding"
           maxLength={120}
           className="w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-ink placeholder:text-ink/30 focus:outline-none focus:ring-2 focus:ring-accent/40"
         />
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-ink/70">Fecha (opcional)</label>
+        <label className="mb-1.5 block text-sm font-medium text-ink/70">Date (optional)</label>
         <input
           type="date"
           value={eventDate}
@@ -68,7 +68,7 @@ export default function CreateEventForm() {
         disabled={loading}
         className="w-full rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-accent/30 transition hover:bg-accent/90 disabled:opacity-60"
       >
-        {loading ? 'Creando...' : 'Crear mi evento'}
+        {loading ? 'Creating...' : 'Create my event'}
       </button>
     </form>
   );

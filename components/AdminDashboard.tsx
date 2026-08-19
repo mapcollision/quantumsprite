@@ -8,6 +8,7 @@ interface EventInfo {
   name: string;
   event_date: string | null;
   upload_enabled: boolean;
+  expired: boolean;
   created_at: string;
 }
 
@@ -30,6 +31,7 @@ export default function AdminDashboard({ token }: { token: string }) {
   const [copied, setCopied] = useState(false);
   const [adminCopied, setAdminCopied] = useState(false);
   const [zipping, setZipping] = useState(false);
+  const [hoursLeft, setHoursLeft] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/admin/${token}`);
@@ -58,6 +60,10 @@ export default function AdminDashboard({ token }: { token: string }) {
     })
       .then(setQrDataUrl)
       .catch(() => {});
+
+    const expiresAt = new Date(event.created_at).getTime() + 48 * 60 * 60 * 1000;
+    const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / (60 * 60 * 1000)));
+    setHoursLeft(remaining);
   }, [event, token]);
 
   async function toggleUploads() {
@@ -72,7 +78,7 @@ export default function AdminDashboard({ token }: { token: string }) {
   }
 
   async function deleteMedia(id: string) {
-    if (!confirm('¿Eliminar esta foto? No se puede deshacer.')) return;
+    if (!confirm('Delete this photo? This cannot be undone.')) return;
     setMedia((prev) => prev.filter((m) => m.id !== id));
     await fetch(`/api/admin/${token}/media/${id}`, { method: 'DELETE' });
   }
@@ -93,7 +99,7 @@ export default function AdminDashboard({ token }: { token: string }) {
     if (!qrDataUrl) return;
     const a = document.createElement('a');
     a.href = qrDataUrl;
-    a.download = `qr-${event?.name?.replace(/\s+/g, '-').toLowerCase() || 'evento'}.png`;
+    a.download = `qr-${event?.name?.replace(/\s+/g, '-').toLowerCase() || 'event'}.png`;
     a.click();
   }
 
@@ -107,14 +113,14 @@ export default function AdminDashboard({ token }: { token: string }) {
         const res = await fetch(item.url);
         const blob = await res.blob();
         const ext = item.storage_path.split('.').pop();
-        const label = item.guest_name ? item.guest_name.replace(/\s+/g, '-') : 'invitado';
+        const label = item.guest_name ? item.guest_name.replace(/\s+/g, '-') : 'guest';
         zip.file(`${label}-${item.id.slice(0, 8)}.${ext}`, blob);
       }
       const content = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(content);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `fotos-${event?.name?.replace(/\s+/g, '-').toLowerCase() || 'evento'}.zip`;
+      a.download = `photos-${event?.name?.replace(/\s+/g, '-').toLowerCase() || 'event'}.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } finally {
@@ -125,7 +131,7 @@ export default function AdminDashboard({ token }: { token: string }) {
   if (notFound) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-cream px-6 text-center">
-        <p className="text-ink/70">Este enlace de administrador no es válido.</p>
+        <p className="text-ink/70">This admin link isn&apos;t valid.</p>
       </main>
     );
   }
@@ -133,7 +139,7 @@ export default function AdminDashboard({ token }: { token: string }) {
   if (!event) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-cream">
-        <p className="text-ink/40">Cargando...</p>
+        <p className="text-ink/40">Loading...</p>
       </main>
     );
   }
@@ -150,15 +156,34 @@ export default function AdminDashboard({ token }: { token: string }) {
       </header>
 
       <section className="mx-auto max-w-3xl px-6 py-8">
+        {event.expired ? (
+          <div className="rounded-3xl border-2 border-red-300 bg-red-50 p-5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">⚠️</span>
+              <h2 className="font-semibold text-red-700">This event has expired</h2>
+            </div>
+            <p className="mt-1 text-sm text-red-700/80">
+              Photos are only available for 48 hours after an event is created. All photos and
+              videos for this event have been permanently deleted and cannot be recovered.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800">
+            ⏳ <b>{hoursLeft ?? '—'} hours left</b> to download your photos — they are
+            permanently deleted 48 hours after this event was created and cannot be recovered
+            afterward.
+          </div>
+        )}
+
         {/* Admin link — clearly separated from the guest-sharing card below */}
-        <div className="rounded-3xl border-2 border-accent/40 bg-white p-5 shadow-sm">
+        <div className="mt-6 rounded-3xl border-2 border-accent/40 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-2">
             <span className="text-lg">🔑</span>
-            <h2 className="font-semibold text-ink">Tu enlace de administrador — guárdalo</h2>
+            <h2 className="font-semibold text-ink">Your admin link — save this</h2>
           </div>
           <p className="mt-1 text-sm text-ink/50">
-            Esta página es solo tuya. No es la misma que el enlace para invitados de abajo — guarda
-            esta antes de cerrar la pestaña, es tu única forma de volver a entrar.
+            This page is yours alone. It&apos;s not the same as the guest link below — save it
+            before closing this tab, it&apos;s your only way back in.
           </p>
           <div className="mt-3 flex items-center gap-2 rounded-xl border border-ink/10 bg-cream px-3 py-2">
             <span className="flex-1 truncate text-sm text-ink/70">{adminLink}</span>
@@ -166,29 +191,29 @@ export default function AdminDashboard({ token }: { token: string }) {
               onClick={copyAdminLink}
               className="shrink-0 text-sm font-medium text-accent"
             >
-              {adminCopied ? 'Copiado' : 'Copiar'}
+              {adminCopied ? 'Copied' : 'Copy'}
             </button>
           </div>
         </div>
 
         <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-          <Stat label="Fotos" value={photoCount} />
+          <Stat label="Photos" value={photoCount} />
           <Stat label="Videos" value={videoCount} />
-          <Stat label="Invitados" value={contributors} />
+          <Stat label="Guests" value={contributors} />
         </div>
 
         <div className="mt-6 rounded-3xl border border-ink/5 bg-white p-6 shadow-sm">
-          <h2 className="font-semibold text-ink">Comparte con tus invitados</h2>
+          <h2 className="font-semibold text-ink">Share with your guests</h2>
           <p className="mt-1 text-sm text-ink/50">
-            <span className="font-medium text-ink/70">Este enlace es solo para invitados</span> —
-            imprime este QR y colócalo en las mesas. No es tu enlace de administrador.
+            <span className="font-medium text-ink/70">This link is for guests only</span> —
+            print this QR and place it on the tables. It is not your admin link.
           </p>
           <div className="mt-5 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             {qrDataUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={qrDataUrl}
-                alt="Código QR"
+                alt="QR code"
                 className="h-40 w-40 rounded-xl border border-ink/10"
               />
             )}
@@ -196,14 +221,14 @@ export default function AdminDashboard({ token }: { token: string }) {
               <div className="flex items-center gap-2 rounded-xl border border-ink/10 bg-cream px-3 py-2">
                 <span className="flex-1 truncate text-sm text-ink/70">{guestLink}</span>
                 <button onClick={copyLink} className="shrink-0 text-sm font-medium text-accent">
-                  {copied ? 'Copiado' : 'Copiar'}
+                  {copied ? 'Copied' : 'Copy'}
                 </button>
               </div>
               <button
                 onClick={downloadQr}
                 className="w-full rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-white"
               >
-                Descargar QR (PNG)
+                Download QR (PNG)
               </button>
             </div>
           </div>
@@ -211,16 +236,17 @@ export default function AdminDashboard({ token }: { token: string }) {
 
         <div className="mt-6 flex items-center justify-between rounded-2xl border border-ink/5 bg-white p-4 shadow-sm">
           <div>
-            <p className="text-sm font-medium text-ink">Recibir fotos nuevas</p>
+            <p className="text-sm font-medium text-ink">Receive new photos</p>
             <p className="text-xs text-ink/40">
               {event.upload_enabled
-                ? 'Activo — los invitados pueden subir fotos'
-                : 'Cerrado — ya no se aceptan fotos nuevas'}
+                ? 'Active — guests can upload photos'
+                : 'Closed — no longer accepting new photos'}
             </p>
           </div>
           <button
             onClick={toggleUploads}
-            className={`relative h-7 w-12 rounded-full transition ${
+            disabled={event.expired}
+            className={`relative h-7 w-12 rounded-full transition disabled:opacity-40 ${
               event.upload_enabled ? 'bg-accent' : 'bg-ink/15'
             }`}
           >
@@ -233,21 +259,23 @@ export default function AdminDashboard({ token }: { token: string }) {
         </div>
 
         <div className="mt-8 flex items-center justify-between">
-          <h2 className="font-semibold text-ink">Galería ({media.length})</h2>
+          <h2 className="font-semibold text-ink">Gallery ({media.length})</h2>
           {media.length > 0 && (
             <button
               onClick={downloadAll}
               disabled={zipping}
               className="text-sm font-medium text-accent disabled:opacity-50"
             >
-              {zipping ? 'Preparando ZIP...' : 'Descargar todas'}
+              {zipping ? 'Preparing ZIP...' : 'Download all'}
             </button>
           )}
         </div>
 
         {media.length === 0 ? (
           <p className="mt-6 text-center text-sm text-ink/40">
-            Aún no hay fotos. ¡Comparte tu QR!
+            {event.expired
+              ? 'Photos were permanently deleted when this event expired.'
+              : 'No photos yet. Share your QR!'}
           </p>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -261,16 +289,16 @@ export default function AdminDashboard({ token }: { token: string }) {
                 )}
                 <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
                   <span className="truncate text-[11px] text-white/90">
-                    {item.guest_name || 'Invitado'}
+                    {item.guest_name || 'Guest'}
                   </span>
                   <div className="flex gap-1.5">
-                    <a href={item.url} download className="text-xs text-white" aria-label="Descargar">
+                    <a href={item.url} download className="text-xs text-white" aria-label="Download">
                       ⬇
                     </a>
                     <button
                       onClick={() => deleteMedia(item.id)}
                       className="text-xs text-white"
-                      aria-label="Eliminar"
+                      aria-label="Delete"
                     >
                       ✕
                     </button>

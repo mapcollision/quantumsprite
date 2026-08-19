@@ -5,7 +5,7 @@ async function getEventByToken(token: string) {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from('events')
-    .select('id, name, event_date, upload_enabled, created_at')
+    .select('id, name, event_date, upload_enabled, expired, created_at')
     .eq('admin_token', token)
     .single();
   if (error || !data) return null;
@@ -15,7 +15,7 @@ async function getEventByToken(token: string) {
 export async function GET(_req: NextRequest, { params }: { params: { token: string } }) {
   const event = await getEventByToken(params.token);
   if (!event) {
-    return NextResponse.json({ error: 'Enlace de administrador inválido.' }, { status: 404 });
+    return NextResponse.json({ error: 'Invalid admin link.' }, { status: 404 });
   }
 
   const supabase = getSupabaseAdmin();
@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
 
   if (error) {
     console.error(error);
-    return NextResponse.json({ error: 'No se pudo cargar la galería.' }, { status: 500 });
+    return NextResponse.json({ error: 'Could not load the gallery.' }, { status: 500 });
   }
 
   const mediaWithUrls = (media || []).map((m) => ({
@@ -41,7 +41,7 @@ export async function GET(_req: NextRequest, { params }: { params: { token: stri
 export async function PATCH(req: NextRequest, { params }: { params: { token: string } }) {
   const event = await getEventByToken(params.token);
   if (!event) {
-    return NextResponse.json({ error: 'Enlace de administrador inválido.' }, { status: 404 });
+    return NextResponse.json({ error: 'Invalid admin link.' }, { status: 404 });
   }
 
   const body = await req.json();
@@ -52,7 +52,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { token: str
     .eq('id', event.id);
 
   if (error) {
-    return NextResponse.json({ error: 'No se pudo actualizar el evento.' }, { status: 500 });
+    return NextResponse.json({ error: 'Could not update the event.' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });
