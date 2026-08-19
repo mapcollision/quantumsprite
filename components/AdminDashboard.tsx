@@ -26,7 +26,9 @@ export default function AdminDashboard({ token }: { token: string }) {
   const [notFound, setNotFound] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [guestLink, setGuestLink] = useState('');
+  const [adminLink, setAdminLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const [adminCopied, setAdminCopied] = useState(false);
   const [zipping, setZipping] = useState(false);
 
   const load = useCallback(async () => {
@@ -48,6 +50,7 @@ export default function AdminDashboard({ token }: { token: string }) {
     if (!event) return;
     const link = `${window.location.origin}/e/${event.id}`;
     setGuestLink(link);
+    setAdminLink(`${window.location.origin}/admin/${token}`);
     QRCode.toDataURL(link, {
       width: 600,
       margin: 2,
@@ -55,7 +58,7 @@ export default function AdminDashboard({ token }: { token: string }) {
     })
       .then(setQrDataUrl)
       .catch(() => {});
-  }, [event]);
+  }, [event, token]);
 
   async function toggleUploads() {
     if (!event) return;
@@ -78,6 +81,12 @@ export default function AdminDashboard({ token }: { token: string }) {
     navigator.clipboard.writeText(guestLink);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  function copyAdminLink() {
+    navigator.clipboard.writeText(adminLink);
+    setAdminCopied(true);
+    setTimeout(() => setAdminCopied(false), 2000);
   }
 
   function downloadQr() {
@@ -141,15 +150,39 @@ export default function AdminDashboard({ token }: { token: string }) {
       </header>
 
       <section className="mx-auto max-w-3xl px-6 py-8">
-        <div className="grid grid-cols-3 gap-3 text-center">
+        {/* Admin link — clearly separated from the guest-sharing card below */}
+        <div className="rounded-3xl border-2 border-accent/40 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">🔑</span>
+            <h2 className="font-semibold text-ink">Tu enlace de administrador — guárdalo</h2>
+          </div>
+          <p className="mt-1 text-sm text-ink/50">
+            Esta página es solo tuya. No es la misma que el enlace para invitados de abajo — guarda
+            esta antes de cerrar la pestaña, es tu única forma de volver a entrar.
+          </p>
+          <div className="mt-3 flex items-center gap-2 rounded-xl border border-ink/10 bg-cream px-3 py-2">
+            <span className="flex-1 truncate text-sm text-ink/70">{adminLink}</span>
+            <button
+              onClick={copyAdminLink}
+              className="shrink-0 text-sm font-medium text-accent"
+            >
+              {adminCopied ? 'Copiado' : 'Copiar'}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-3 gap-3 text-center">
           <Stat label="Fotos" value={photoCount} />
           <Stat label="Videos" value={videoCount} />
           <Stat label="Invitados" value={contributors} />
         </div>
 
-        <div className="mt-8 rounded-3xl border border-ink/5 bg-white p-6 shadow-sm">
+        <div className="mt-6 rounded-3xl border border-ink/5 bg-white p-6 shadow-sm">
           <h2 className="font-semibold text-ink">Comparte con tus invitados</h2>
-          <p className="mt-1 text-sm text-ink/50">Imprime este QR y colócalo en las mesas.</p>
+          <p className="mt-1 text-sm text-ink/50">
+            <span className="font-medium text-ink/70">Este enlace es solo para invitados</span> —
+            imprime este QR y colócalo en las mesas. No es tu enlace de administrador.
+          </p>
           <div className="mt-5 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             {qrDataUrl && (
               // eslint-disable-next-line @next/next/no-img-element
